@@ -1,19 +1,72 @@
 ;;;;; Slovania obchodnikmi ;;;
 
+;otazky: ako sa vysporiadat s tym aby na zaciatku bola moznost len vybranim tahu kam ist a az potom moznost nakupovat resp. ukoncit tah
+
 
 ;;;;;;;;;;
 ;; role ;;
 
 (role red)
 (role blue)
+(role random)
 
 ;;;;;;;;;;
 ;; fakty ;;
+
+; vrcholA vrcholB vzdialenost
+
+(vzdialenost_vrcholov 1 2 1) 
+(vzdialenost_vrcholov 1 5 2)
+(vzdialenost_vrcholov 2 1 1)
+(vzdialenost_vrcholov 2 5 1)
+(vzdialenost_vrcholov 2 1 2)
+(vzdialenost_vrcholov 2 8 2)
+(vzdialenost_vrcholov 2 4 2)
+(vzdialenost_vrcholov 2 6 2)
+(vzdialenost_vrcholov 3 4 1)
+(vzdialenost_vrcholov 3 5 2)
+(vzdialenost_vrcholov 4 3 1)
+(vzdialenost_vrcholov 4 5 1)
+(vzdialenost_vrcholov 4 3 2)
+(vzdialenost_vrcholov 4 2 2)
+(vzdialenost_vrcholov 4 6 2)
+(vzdialenost_vrcholov 4 8 2)
+(vzdialenost_vrcholov 5 2 1)
+(vzdialenost_vrcholov 5 4 1)
+(vzdialenost_vrcholov 5 6 1)
+(vzdialenost_vrcholov 5 8 1)
+(vzdialenost_vrcholov 5 1 2)
+(vzdialenost_vrcholov 5 3 2)
+(vzdialenost_vrcholov 5 7 2)
+(vzdialenost_vrcholov 5 9 2)
+(vzdialenost_vrcholov 6 7 1)
+(vzdialenost_vrcholov 6 5 1)
+(vzdialenost_vrcholov 6 2 2)
+(vzdialenost_vrcholov 6 7 2)
+(vzdialenost_vrcholov 6 8 2)
+(vzdialenost_vrcholov 6 4 2)
+(vzdialenost_vrcholov 7 6 1)
+(vzdialenost_vrcholov 7 5 2)
+(vzdialenost_vrcholov 8 5 1)
+(vzdialenost_vrcholov 8 9 1)
+(vzdialenost_vrcholov 8 9 2)
+(vzdialenost_vrcholov 8 2 2)
+(vzdialenost_vrcholov 8 6 2)
+(vzdialenost_vrcholov 8 4 2)
+(vzdialenost_vrcholov 9 8 1)
+(vzdialenost_vrcholov 9 5 2)
+
 
 (castle 1)
 (castle 3)
 (castle 7)
 (castle 9)
+
+(path 2)
+(path 4)
+(path 5)
+(path 6)
+(path 8)
 
 (edge 1 2)
 (edge 2 1)
@@ -63,71 +116,214 @@
 ;; úvodny stav ;;
 
 
-; stav: meno pozicia peniaze id_misie akt_body pocet_bazin pocet_zbojnikov pocet_rozbitych_ciest vyzddvihol_tovar
+; stav: meno pozicia peniaze id_misie akt_body pocet_bazin pocet_zbojnikov pocet_rozbitych_ciest vyzddvihol_tovar uz_sa_pohol
 
-(init (playerStat blue 1 10 1 0 0 0 0 true))
-(init (playerStat red 7 10 6 0 0 0 0 true))
-(init (control red))
+(init (control random red))
+(init (playerStat blue 1 10 1 0 0 0 0 true false))
+(init (playerStat red 7 10 6 0 0 0 0 true false))
+(init (rollRess 0))
+
 
 
 
 ;;;;;;;;;;;;;;;;;;
 ;; legalne tahy ;;
 
-(<= (legal ?player noop)
-        (role ?player)
-        (not (true (control ?player))))
+(<= (legal ?anyPlayer noop)		;hraci mimo kola nerobia nic
+	(true (control ?player ?other))
+	(role ?anyPlayer)
+	(distinct ?player ?anyPlayer))
 
+
+(<= (legal random noop)
+	(true (control ?player random))
+	(role ?player))
+	
+(<= (legal random (roll 1))			;mozne hody, zatial 1 a 2
+	(true (control random ?next)))
+
+(<= (legal random (roll 2))			;
+	(true (control random ?next)))
 
 (<= (legal ?player (move ?act ?next))
-        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected)) 
-	(true (control ?player))
-        (edge ?act ?next))
+        (true (rollRess ?num))
+        (vzdialenost_vrcholov ?act ?next ?num)
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected false)) 
+	(true (control ?player random)))
+        
+
+
+(<= (legal ?player endTurn)
+       (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+       (true (control ?player random)))
+
+
+(<= (legal ?player buyBazina)
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true)) 
+        (true (control ?player random))
+        (greaterThen ?m 0))
+
+(<= (legal ?player buyZbojnici)
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+        (true (control ?player random))
+        (greaterThen ?m 0))
+
+(<= (legal ?player buyRozbitaCesta)
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+        (true (control ?player random))
+        (greaterThen ?m 0))
+
+(<= (legal ?player (dropBazina ?policko))
+        (path ?policko)
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+        (true (control ?player random))
+        (vzdialenost_vrcholov ?policko ?tmp ?tmp2)
+        (not (true (field ?policko ?anyPlayer ?x)))
+        (greaterThen ?b 0))
+
+(<= (legal ?player (dropZbojnici ?policko))
+        (path ?policko)
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+        (true (control ?player random))
+        (vzdialenost_vrcholov ?policko ?tmp ?tmp2)
+        (not (true (field ?policko ?anyPlayer ?x)))
+        (greaterThen ?z 0))
+
+(<= (legal ?player (dropRozbitaCesta ?policko))
+        (path ?policko)
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+        (true (control ?player random))
+        (vzdialenost_vrcholov ?policko ?tmp ?tmp2)
+        (not (true (field ?policko ?anyPlayer ?x)))
+        (greaterThen ?rc 0))
 
 ;;;;;;;;;;;;;;;;
 ;; next ;;
 ;;;;;;;;;;;;;;;;
 
+	
+(<= (next (rollRess ?num))	
+	(does random (roll ?num)))
 
-(<= (next (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected))                     ;ak hrac nie je na tahu, figurka ostava na rovnakom poli hracej plochy
+
+
+(<= (next (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected ?pohol))                     ;ak hrac nie je na tahu, figurka ostava na rovnakom poli hracej plochy
         (does ?player noop)
-        (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected)))
+        (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected ?pohol)))
 
-(<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc true))                       ;ak hrac je na tahu a nedokoncil misiu tak sa posuva figurkou
+(<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc true true))                       ;ak hrac je na tahu a nedokoncil misiu tak sa posuva figurkou
          (does ?player (move ?actP ?newP))
          (mission ?idM ?from ?to)
          (distinct ?to ?newP)
-         (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc true))) 
+         (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc true false))) 
 
-(<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc false))                       ;ak hrac je na tahu a nedokoncil misiu tak sa posuva figurkou
+(<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc false true))                       ;ak hrac je na tahu a nedokoncil misiu tak sa posuva figurkou
          (does ?player (move ?actP ?newP))
          (mission ?idM ?from ?to)
          (distinct ?from ?newP)
-         (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc false))) 
+         (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc false false))) 
                        
 
-(<= (next (playerStat ?player ?newP ?m ?newMission ?newPoints ?b ?z ?rc false))                   ;ak dokoncil misiu, tak dostane novu, pricom tovar nie je vyzdvihnuty a dostane pocet bodov za misiu
+(<= (next (playerStat ?player ?newP ?m ?newMission ?newPoints ?b ?z ?rc false true))                   ;ak dokoncil misiu, tak dostane novu, pricom tovar nie je vyzdvihnuty a dostane pocet bodov za misiu
         (does ?player (move ?act ?newP))
-        (true (playerStat ?player ?act ?m ?actMission ?actPoints ?b ?z ?rc true))
+        (true (playerStat ?player ?act ?m ?actMission ?actPoints ?b ?z ?rc true false))
         (next_mission ?actMission ?newMission)
         (mission ?actMission ?from ?newP)
         (mission ?newMission ?from2 ?to)
         (pluss ?actPoints 5 ?newPoints))
 
-(<= (next (playerStat ?player ?newP ?m ?actMission ?p ?b ?z ?rc true))                            ;ak je na policku kde zacina misia tak vyzdivhol tovar
-        (true (playerStat ?player ?act ?m ?actMission ?p ?b ?z ?rc false))
+(<= (next (playerStat ?player ?newP ?m ?actMission ?p ?b ?z ?rc true true))                            ;ak je na policku kde zacina misia tak vyzdivhol tovar
+        (true (playerStat ?player ?act ?m ?actMission ?p ?b ?z ?rc false false))
         (does ?player (move ?act ?newP))
         (mission ?actMission ?newP ?to))
                                                                                         
-                                                                                    
+        
+
+(<= (next (playerStat ?player ?act ?newM ?idM ?p ?newB ?z ?rc ?collected true))                        ;ak kupil bazinu
+        (true (playerStat ?player ?act ?oldM ?idM ?p ?oldB ?z ?rc ?collected true))
+        (does ?player buyBazina)
+        (succ ?newM ?oldM)
+        (succ ?oldB ?newB))
+
+(<= (next (playerStat ?player ?act ?newM ?idM ?p ?b ?newZ ?rc ?collected true))                        ;ak kupil zbojnikov
+        (true (playerStat ?player ?act ?oldM ?idM ?p ?b ?oldZ ?rc ?collected true))
+        (does ?player buyZbojnici)
+        (succ ?newM ?oldM)
+        (succ ?oldZ ?newZ))
+
+(<= (next (playerStat ?player ?act ?newM ?idM ?p ?b ?z ?newRC ?collected true))                        ;ak kupil rozbitu cestu
+        (true (playerStat ?player ?act ?oldM ?idM ?p ?b ?z ?oldRC ?collected true))
+        (does ?player buyRozbitaCesta)
+        (succ ?newM ?oldM)
+        (succ ?oldRC ?newRC))
+
+
+(<= (next (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected false))                                   ;ak ukoncil tah
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+        (does ?player endTurn))
+                                                                         
+
+                                                                                                             ;ak dropol bazinu
+(<= (next (playerStat ?player ?act ?m ?idM ?p ?newB ?z ?rc ?collected true)) 
+        (true (playerStat ?player ?act ?m ?idM ?p ?oldB ?z ?rc ?collected true))
+        (succ ?newB ?oldB)
+        (does ?player (dropBazina ?policko)))
+
+(<= (next (playerStat ?player ?act ?m ?idM ?p ?b ?newZ ?rc ?collected true))             ;ak dropol zbojnikov
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?oldZ ?rc ?collected true))
+        (succ ?newZ ?oldZ)
+        (does ?player (dropZbojnici ?policko)))
+
+(<= (next (playerStat ?player ?act ?m ?idM ?p ?b ?z ?newRC ?collected true))             ;ak dropol rozbitu cestu
+        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?oldRC ?collected true))
+        (succ ?newRC ?oldRC)
+        (does ?player (dropRozbitaCesta ?policko)))
+
+
+
+(<= (next (field ?policko ?player bazina))
+        (does ?player (dropBazina ?policko))
+        (true (control ?player random)))
+
+(<= (next (field ?policko ?player zbojnici))
+        (does ?player (dropZbojnici ?policko))
+        (true (control ?player random)))
+
+
+
+(<= (next (field ?policko ?player rozbitaCesta))
+        (does ?player (dropRozbitaCesta ?policko))
+        (true (control ?player random)))
+
+
+(<= (next (field ?policko ?player ?x))
+        (true (field ?policko ?player ?x)))
+
+
 ;ak je na policku, kde nezacina misia, tak tovar zostava rovnaky, OTAZKA NA SKOLITELA CI TO TU MUSI BYT !!!
 
 
-(<= (next (control red))         
-      (true (control blue)))
+(<= (next (control ?next random))
+	(does random (roll ?num))		
+	(true (control random ?next)))		
 
-(<= (next (control blue))
-      (true (control red)))
+
+
+
+(<= (next (control ?player random))
+      (not (does ?player endTurn))
+      (true (control ?player random)))
+
+
+
+(<= (next (control random blue))
+      (does red endTurn)         
+      (true (control red random)))
+
+(<= (next (control random red))
+      (does blue endTurn)         
+      (true (control blue random)))
+      
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -136,7 +332,7 @@
 
 
 (<= (goal ?player ?actPoints)
-     (true (playerStat ?player ?actP ?m ?actMission ?actPoints ?b ?z ?rc ?collected)))
+     (true (playerStat ?player ?actP ?m ?actMission ?actPoints ?b ?z ?rc ?collected ?pohol)))
         
         
 
@@ -145,7 +341,7 @@
 
 
 (<= terminal
-    (true (playerStat ?player ?actP ?m ?actMission ?actPoints ?b ?z ?rc ?collected))
+    (true (playerStat ?player ?actP ?m ?actMission ?actPoints ?b ?z ?rc ?collected ?pohol))
     (greaterThen ?actPoints 9))    
 
 
@@ -163,6 +359,12 @@
         (succ ?y2 ?y)
         (pluss ?x2 ?y2 ?res))
 
+(<= (minuss ?res 0 ?res); x - y = res
+	(succ ?res ?x))	
+(<= (minuss ?x ?y ?res)		;IMPORTATNT: same as above
+	(succ ?xM1 ?x)
+	(succ ?yM1 ?y)
+	(minuss ?xM1 ?yM1 ?res))
 
 (<= (greaterThen ?x ?y)	
     (succ ?y ?x))
