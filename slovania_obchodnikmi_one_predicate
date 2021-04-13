@@ -15,47 +15,6 @@
 
 ; vrcholA vrcholB vzdialenost
 
-(vzdialenost_vrcholov 1 2 1) 
-(vzdialenost_vrcholov 1 5 2)
-(vzdialenost_vrcholov 2 1 1)
-(vzdialenost_vrcholov 2 5 1)
-(vzdialenost_vrcholov 2 1 2)
-(vzdialenost_vrcholov 2 8 2)
-(vzdialenost_vrcholov 2 4 2)
-(vzdialenost_vrcholov 2 6 2)
-(vzdialenost_vrcholov 3 4 1)
-(vzdialenost_vrcholov 3 5 2)
-(vzdialenost_vrcholov 4 3 1)
-(vzdialenost_vrcholov 4 5 1)
-(vzdialenost_vrcholov 4 3 2)
-(vzdialenost_vrcholov 4 2 2)
-(vzdialenost_vrcholov 4 6 2)
-(vzdialenost_vrcholov 4 8 2)
-(vzdialenost_vrcholov 5 2 1)
-(vzdialenost_vrcholov 5 4 1)
-(vzdialenost_vrcholov 5 6 1)
-(vzdialenost_vrcholov 5 8 1)
-(vzdialenost_vrcholov 5 1 2)
-(vzdialenost_vrcholov 5 3 2)
-(vzdialenost_vrcholov 5 7 2)
-(vzdialenost_vrcholov 5 9 2)
-(vzdialenost_vrcholov 6 7 1)
-(vzdialenost_vrcholov 6 5 1)
-(vzdialenost_vrcholov 6 2 2)
-(vzdialenost_vrcholov 6 7 2)
-(vzdialenost_vrcholov 6 8 2)
-(vzdialenost_vrcholov 6 4 2)
-(vzdialenost_vrcholov 7 6 1)
-(vzdialenost_vrcholov 7 5 2)
-(vzdialenost_vrcholov 8 5 1)
-(vzdialenost_vrcholov 8 9 1)
-(vzdialenost_vrcholov 8 9 2)
-(vzdialenost_vrcholov 8 2 2)
-(vzdialenost_vrcholov 8 6 2)
-(vzdialenost_vrcholov 8 4 2)
-(vzdialenost_vrcholov 9 8 1)
-(vzdialenost_vrcholov 9 5 2)
-
 
 (castle 1)
 (castle 3)
@@ -129,7 +88,7 @@
 ;;;;;;;;;;;;;;;;;;
 ;; legalne tahy ;;
 
-(<= (legal ?anyPlayer noop)		;hraci mimo kola nerobia nic
+(<= (legal ?anyPlayer noop)		       			;hraci mimo kola nerobia nic
 	(true (control ?player ?other))
 	(role ?anyPlayer)
 	(distinct ?player ?anyPlayer))
@@ -139,7 +98,7 @@
 	(true (control ?player random))
 	(role ?player))
 	
-(<= (legal random (roll 1))			;mozne hody, zatial 1 a 2
+(<= (legal random (roll 1))					;mozne hody, zatial 1 a 2
 	(true (control random ?next)))
 
 (<= (legal random (roll 2))			;
@@ -147,11 +106,10 @@
 
 (<= (legal ?player (move ?act ?next))
         (true (rollRess ?num))
-        (vzdialenost_vrcholov ?act ?next ?num)
+        (or (vrcholy_vo_vzdialenosti ?act ?next ?num) (hrady_vo_vzdialenosti ?act ?next ?num))
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected false)) 
 	(true (control ?player random)))
         
-
 
 (<= (legal ?player endTurn)
        (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
@@ -213,19 +171,22 @@
 
 (<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc true true))                       ;ak hrac je na tahu a nedokoncil misiu tak sa posuva figurkou
          (does ?player (move ?actP ?newP))
+         (not (true (field ?newP ?opponent bazina)) and (distinct ?player ?opponent))
          (mission ?idM ?from ?to)
          (distinct ?to ?newP)
          (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc true false))) 
 
 (<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc false true))                       ;ak hrac je na tahu a nedokoncil misiu tak sa posuva figurkou
          (does ?player (move ?actP ?newP))
+         (not (true (field ?newP ?opponent bazina)) and (distinct ?player ?opponent))
          (mission ?idM ?from ?to)
          (distinct ?from ?newP)
          (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc false false))) 
                        
 
-(<= (next (playerStat ?player ?newP ?m ?newMission ?newPoints ?b ?z ?rc false true))                   ;ak dokoncil misiu, tak dostane novu, pricom tovar nie je vyzdvihnuty a dostane pocet bodov za misiu
+(<= (next (playerStat ?player ?newP ?m ?newMission ?newPoints ?b ?z ?rc false true))        ;ak dokoncil misiu, tak dostane novu, pricom tovar nie je vyzdvihnuty a dostane pocet bodov za misiu
         (does ?player (move ?act ?newP))
+        (not (true (field ?newP ?opponent bazina)) and (distinct ?player ?opponent))
         (true (playerStat ?player ?act ?m ?actMission ?actPoints ?b ?z ?rc true false))
         (next_mission ?actMission ?newMission)
         (mission ?actMission ?from ?newP)
@@ -235,6 +196,7 @@
 (<= (next (playerStat ?player ?newP ?m ?actMission ?p ?b ?z ?rc true true))                            ;ak je na policku kde zacina misia tak vyzdivhol tovar
         (true (playerStat ?player ?act ?m ?actMission ?p ?b ?z ?rc false false))
         (does ?player (move ?act ?newP))
+        (not (true (field ?newP ?opponent bazina)) and (distinct ?player ?opponent))
         (mission ?actMission ?newP ?to))
                                                                                         
         
@@ -280,34 +242,38 @@
         (does ?player (dropRozbitaCesta ?policko)))
 
 
+											
+
+(<= (next (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected true)) 		;ak stupil na policko, na kt. je cudzia bazina
+	(does ?player (move ?actP ?newP))
+	(true (field ?newP ?opponent bazina))
+	(true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false)))
+	
+
+
+
 
 (<= (next (field ?policko ?player bazina))
         (does ?player (dropBazina ?policko))
         (true (control ?player random)))
 
 (<= (next (field ?policko ?player zbojnici))
-        (does ?player (dropZbojnici ?policko))
+        (does ?player(dropZbojnici ?policko))
         (true (control ?player random)))
-
-
 
 (<= (next (field ?policko ?player rozbitaCesta))
         (does ?player (dropRozbitaCesta ?policko))
         (true (control ?player random)))
 
 
-(<= (next (field ?policko ?player ?x))
-        (true (field ?policko ?player ?x)))
-
-
-;ak je na policku, kde nezacina misia, tak tovar zostava rovnaky, OTAZKA NA SKOLITELA CI TO TU MUSI BYT !!!
+(<= (next (field ?newP ?player ?x))
+        (not (does ?anyPlayer (move ?oldP ?newP)))    ;nerozumiem preco nefunguje
+        (true (field ?newP ?player ?x)))   
 
 
 (<= (next (control ?next random))
 	(does random (roll ?num))		
 	(true (control random ?next)))		
-
-
 
 
 (<= (next (control ?player random))
@@ -406,6 +372,28 @@
 
 ;predikat finished mission
 ;este pridat premennu ci tovar vyzdvihol
+
+
+(<= (hrady_vo_vzdialenosti ?a ?cas ?n)
+         (castle ?cas)
+         (greaterThen ?x 0)
+         (greaterThen ?n ?x)
+         (vrcholy_vo_vzdialenosti ?a ?cas ?x))
+
+
+(<= (vrcholy_vo_vzdialenosti ?a ?b 1)
+        (edge ?a ?b))
+
+
+(<= (vrcholy_vo_vzdialenosti ?a ?b ?n)
+        (greaterThen ?n 1)
+        (edge ?a ?c)
+        (succ ?x ?b)
+        (succ ?nM1 ?n)
+        (distinct ?a ?b)
+        (vrcholy_vo_vzdialenosti ?c ?b ?nM1))
+        
+
 
 (<= (finished_mission ?player ?newP)
       (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc true))
