@@ -135,7 +135,7 @@
         (path ?policko)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
         (true (control ?player random))
-        (vzdialenost_vrcholov ?policko ?tmp ?tmp2)
+        ;(vzdialenost_vrcholov ?policko ?tmp ?tmp2)
         (not (true (field ?policko ?anyPlayer ?x)))
         (greaterThen ?b 0))
 
@@ -143,7 +143,7 @@
         (path ?policko)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
         (true (control ?player random))
-        (vzdialenost_vrcholov ?policko ?tmp ?tmp2)
+        ;(vzdialenost_vrcholov ?policko ?tmp ?tmp2)
         (not (true (field ?policko ?anyPlayer ?x)))
         (greaterThen ?z 0))
 
@@ -151,7 +151,7 @@
         (path ?policko)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
         (true (control ?player random))
-        (vzdialenost_vrcholov ?policko ?tmp ?tmp2)
+        ;(vzdialenost_vrcholov ?policko ?tmp ?tmp2)
         (not (true (field ?policko ?anyPlayer ?x)))
         (greaterThen ?rc 0))
 
@@ -171,14 +171,14 @@
 
 (<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc true true))                       ;ak hrac je na tahu a nedokoncil misiu tak sa posuva figurkou
          (does ?player (move ?actP ?newP))
-         (not (true (field ?newP ?opponent bazina)) and (distinct ?player ?opponent))
+         (not (true (field ?newP ?opponent ?chip)) and (distinct ?player ?opponent))
          (mission ?idM ?from ?to)
          (distinct ?to ?newP)
          (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc true false))) 
 
 (<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc false true))                       ;ak hrac je na tahu a nedokoncil misiu tak sa posuva figurkou
          (does ?player (move ?actP ?newP))
-         (not (true (field ?newP ?opponent bazina)) and (distinct ?player ?opponent))
+         (not (true (field ?newP ?opponent ?chip)) and (distinct ?player ?opponent))
          (mission ?idM ?from ?to)
          (distinct ?from ?newP)
          (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc false false))) 
@@ -186,7 +186,7 @@
 
 (<= (next (playerStat ?player ?newP ?m ?newMission ?newPoints ?b ?z ?rc false true))        ;ak dokoncil misiu, tak dostane novu, pricom tovar nie je vyzdvihnuty a dostane pocet bodov za misiu
         (does ?player (move ?act ?newP))
-        (not (true (field ?newP ?opponent bazina)) and (distinct ?player ?opponent))
+        (not (true (field ?newP ?opponent ?chip)) and (distinct ?player ?opponent))
         (true (playerStat ?player ?act ?m ?actMission ?actPoints ?b ?z ?rc true false))
         (next_mission ?actMission ?newMission)
         (mission ?actMission ?from ?newP)
@@ -196,7 +196,7 @@
 (<= (next (playerStat ?player ?newP ?m ?actMission ?p ?b ?z ?rc true true))                            ;ak je na policku kde zacina misia tak vyzdivhol tovar
         (true (playerStat ?player ?act ?m ?actMission ?p ?b ?z ?rc false false))
         (does ?player (move ?act ?newP))
-        (not (true (field ?newP ?opponent bazina)) and (distinct ?player ?opponent))
+        (not (true (field ?newP ?opponent ?chip)) and (distinct ?player ?opponent))
         (mission ?actMission ?newP ?to))
                                                                                         
         
@@ -247,8 +247,24 @@
 (<= (next (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected true)) 		;ak stupil na policko, na kt. je cudzia bazina
 	(does ?player (move ?actP ?newP))
 	(true (field ?newP ?opponent bazina))
+        (distinct ?opponent ?player)
 	(true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false)))
-	
+
+
+
+(<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc ?collected true)) 		;ak stupil na policko, na kt. je jeho neg. zeton
+	(does ?player (move ?actP ?newP))
+	(true (field ?newP ?player ?chip))
+	(true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false)))
+
+
+(<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc false true))   
+       (does ?player (move ?actP ?newP))
+       (true (field ?newP ?opponent zbojnici))
+       (distinct ?opponent ?player)                                                ;ak stupil na policko, na kt. su cudzi zbojnici
+       (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false)))
+
+
 
 
 
@@ -266,9 +282,14 @@
         (true (control ?player random)))
 
 
-(<= (next (field ?newP ?player ?x))
-        (not (does ?anyPlayer (move ?oldP ?newP)))    ;nerozumiem preco nefunguje
-        (true (field ?newP ?player ?x)))   
+(<= (next (field ?f ?player ?chip))                     ;zeton ostava na policko ak nema zmiznut
+    (true (field ?f ?player ?chip))
+    (not (removeField ?f ?player ?chip)))
+    
+(<= (removeField ?newP ?playerPut ?chip)                ;pomocne predikat, kt hovori o tom ze na policko ma chip zmiznut
+    (true (field ?newP ?playerPut ?chip))
+    (does ?otherPlayer (move ?old ?newP))
+    (distinct ?otherPlayer ?playerPut))
 
 
 (<= (next (control ?next random))
@@ -279,7 +300,6 @@
 (<= (next (control ?player random))
       (not (does ?player endTurn))
       (true (control ?player random)))
-
 
 
 (<= (next (control random blue))
@@ -390,13 +410,13 @@
         (edge ?a ?c)
         (succ ?x ?b)
         (succ ?nM1 ?n)
-        (distinct ?a ?b)
+        (not (equals ?a ?b))
         (vrcholy_vo_vzdialenosti ?c ?b ?nM1))
         
 
 
-(<= (finished_mission ?player ?newP)
-      (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc true))
-      (does ?player (move ?actP ?newP))
-      (mission ?idM ?from ?to)
-      (equals ?to ?newP))  
+;(<= (finished_mission ?player ?newP)
+;     (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc true))
+;      (does ?player (move ?actP ?newP))
+;      (mission ?idM ?from ?to)
+;      (equals ?to ?newP))  
