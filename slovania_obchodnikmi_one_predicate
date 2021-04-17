@@ -75,7 +75,7 @@
 ;; úvodny stav ;;
 
 
-; stav: meno pozicia peniaze id_misie akt_body pocet_bazin pocet_zbojnikov pocet_rozbitych_ciest vyzddvihol_tovar uz_sa_pohol
+; stav: meno poziciaFigurky peniaze idMisie aktBody pocetBazin pocetYbojnikov pocetRozbitychCiest vyzdviholTovar uzSaPohol
 
 (init (control random red))
 (init (playerStat blue 1 10 1 0 0 0 0 true false))
@@ -119,16 +119,19 @@
 (<= (legal ?player buyBazina)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true)) 
         (true (control ?player random))
+        (not (true (inJail ?player)))
         (greaterThen ?m 0))
 
 (<= (legal ?player buyZbojnici)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
         (true (control ?player random))
+        (not (true (inJail ?player)))
         (greaterThen ?m 0))
 
 (<= (legal ?player buyRozbitaCesta)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
         (true (control ?player random))
+        (not (true (inJail ?player)))
         (greaterThen ?m 0))
 
 (<= (legal ?player (dropBazina ?policko))
@@ -137,6 +140,7 @@
         (true (control ?player random))
         ;(vzdialenost_vrcholov ?policko ?tmp ?tmp2)
         (not (true (field ?policko ?anyPlayer ?x)))
+        (not (true (inJail ?player)))
         (greaterThen ?b 0))
 
 (<= (legal ?player (dropZbojnici ?policko))
@@ -145,6 +149,7 @@
         (true (control ?player random))
         ;(vzdialenost_vrcholov ?policko ?tmp ?tmp2)
         (not (true (field ?policko ?anyPlayer ?x)))
+        (not (true (inJail ?player)))
         (greaterThen ?z 0))
 
 (<= (legal ?player (dropRozbitaCesta ?policko))
@@ -153,6 +158,7 @@
         (true (control ?player random))
         ;(vzdialenost_vrcholov ?policko ?tmp ?tmp2)
         (not (true (field ?policko ?anyPlayer ?x)))
+        (not (true (inJail ?player)))
         (greaterThen ?rc 0))
 
 ;;;;;;;;;;;;;;;;
@@ -267,7 +273,12 @@
 
 
 
-
+(<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc ?collected true)) 
+        (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false))		;ak stupil na policko, na kt. je cudzia rozbita cesta
+	(does ?player (move ?actP ?newP))
+	(true (field ?newP ?opponent rozbitaCesta))
+        (distinct ?player ?opponent))
+	
 
 (<= (next (field ?policko ?player bazina))
         (does ?player (dropBazina ?policko))
@@ -292,25 +303,66 @@
     (distinct ?otherPlayer ?playerPut))
 
 
+(<= (next (inJail ?player))                              ;ak stupil na rozbitu cestu tak je vo vazeni
+    (true (field ?newP ?opponent rozbitaCesta))
+    (does ?player (move ?oldP ?newP))
+    (distinct ?player ?opponent))
+
+
+
+(<= (next (inJail ?player))
+    (true (inJail ?player))
+    (not (removeJail ?player)))
+
+
+(<= (removeJail ?player)
+    (does ?opponent endTurn)
+    (distinct ?player ?opponent))
+
+(<= (removeJail ?player)
+    (true (inJail ?player))
+    (true (inJail ?opponent))
+    (distinct ?player ?opponent))
+
+
 (<= (next (control ?next random))
 	(does random (roll ?num))		
 	(true (control random ?next)))		
 
 
 (<= (next (control ?player random))
-      (not (does ?player endTurn))
+      (true (control ?player random))
+      (not (does ?player endTurn)))
+      
+
+
+(<= (next (control random ?opponent)) 
+      (role ?opponent) 
+      (role ?player)                           ;ak je hrac na tahu a super nie je vo vazeni tak na tah ide super
+      (not (true (inJail ?opponent)))
+      (distinct random ?opponent)
+      (distinct random ?player)
+      (distinct ?player ?opponent)
+      (does ?player endTurn)         
+      (true (control ?player random)))
+      
+(<= (next (control random ?player)) 
+      (role ?opponent)
+      (role ?player)
+      (not (true (inJail ?player)))                 ;ak je hrac na tahu a nie je vo vazeni a super je vo vazeni tak ide este raz
+      (true (inJail ?opponent))
+      (distinct ?player ?opponent)
+      (does ?player endTurn)         
       (true (control ?player random)))
 
 
-(<= (next (control random blue))
-      (does red endTurn)         
-      (true (control red random)))
-
-(<= (next (control random red))
-      (does blue endTurn)         
-      (true (control blue random)))
-      
-
+                                                      
+(<= (next (control random ?opponent))                           ;ak su obaja vo vazeni tak ide druhy hrac
+      (true (inJail ?opponent))
+      (true (inJail ?player))
+      (distinct ?player ?opponent)
+      (does ?player endTurn)         
+      (true (control ?player random)))                                             
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; terminal and goals ;;
@@ -394,7 +446,7 @@
 ;este pridat premennu ci tovar vyzdvihol
 
 
-(<= (hrady_vo_vzdialenosti ?a ?cas ?n)
+(<= (hrady_vo_vzdialenosti ?a ?cas ?n)            ;vsetky hrady vo vzdialenosti "n", ale v skutocnosti su vo vzdialenosti mensej ako n a vacsej ako 0
          (castle ?cas)
          (greaterThen ?x 0)
          (greaterThen ?n ?x)
