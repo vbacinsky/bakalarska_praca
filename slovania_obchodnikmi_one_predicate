@@ -74,12 +74,14 @@
 ;;;;;;;;;;;;;;;;;
 ;; úvodny stav ;;
 
-
+;pozitiveChips: hrac sprievodca ochranka noveKoleso
 ; stav: meno poziciaFigurky peniaze idMisie aktBody pocetBazin pocetYbojnikov pocetRozbitychCiest vyzdviholTovar uzSaPohol
 
 (init (control random red))
 (init (playerStat blue 1 10 1 0 0 0 0 true false))
 (init (playerStat red 7 10 6 0 0 0 0 true false))
+(init (pozitiveChips blue 0 0 0))
+(init (pozitiveChips red 0 0 0))
 (init (rollRess 0))
 
 
@@ -116,23 +118,42 @@
        (true (control ?player random)))
 
 
-(<= (legal ?player buyBazina)
+(<= (legal ?player buyN_Bazina)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true)) 
         (true (control ?player random))
         (not (true (inJail ?player)))
         (greaterThen ?m 0))
 
-(<= (legal ?player buyZbojnici)
+(<= (legal ?player buyN_Zbojnici)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
         (true (control ?player random))
         (not (true (inJail ?player)))
         (greaterThen ?m 0))
 
-(<= (legal ?player buyRozbitaCesta)
+(<= (legal ?player buyN_RozbitaCesta)
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
         (true (control ?player random))
         (not (true (inJail ?player)))
         (greaterThen ?m 0))
+
+(<= (legal ?player buyP_Ochranka)
+    (true (control ?player random))
+    (not (true (inJail ?player)))
+    (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+    (greaterThen ?m 1))
+
+(<= (legal ?player buyP_Sprievodca)
+    (true (control ?player random))
+    (not (true (inJail ?player)))
+    (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+    (greaterThen ?m 1))
+
+(<= (legal ?player buyP_NoveKoleso)
+    (true (control ?player random))
+    (not (true (inJail ?player)))
+    (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
+    (greaterThen ?m 1))
+
 
 (<= (legal ?player (dropBazina ?policko))
         (path ?policko)
@@ -209,22 +230,26 @@
 
 (<= (next (playerStat ?player ?act ?newM ?idM ?p ?newB ?z ?rc ?collected true))                        ;ak kupil bazinu
         (true (playerStat ?player ?act ?oldM ?idM ?p ?oldB ?z ?rc ?collected true))
-        (does ?player buyBazina)
+        (does ?player buyN_Bazina)
         (succ ?newM ?oldM)
         (succ ?oldB ?newB))
 
 (<= (next (playerStat ?player ?act ?newM ?idM ?p ?b ?newZ ?rc ?collected true))                        ;ak kupil zbojnikov
         (true (playerStat ?player ?act ?oldM ?idM ?p ?b ?oldZ ?rc ?collected true))
-        (does ?player buyZbojnici)
+        (does ?player buyN_Zbojnici)
         (succ ?newM ?oldM)
         (succ ?oldZ ?newZ))
 
 (<= (next (playerStat ?player ?act ?newM ?idM ?p ?b ?z ?newRC ?collected true))                        ;ak kupil rozbitu cestu
         (true (playerStat ?player ?act ?oldM ?idM ?p ?b ?z ?oldRC ?collected true))
-        (does ?player buyRozbitaCesta)
+        (does ?player buyN_RozbitaCesta)
         (succ ?newM ?oldM)
         (succ ?oldRC ?newRC))
 
+(<= (next (playerStat ?player ?act ?newM ?idM ?p ?b ?z ?rc ?collected true))                        ;ak kupil Sprievodcu alebo Ochranku alebo NoveKoleso, minus 2 peniaze
+        (true (playerStat ?player ?act ?oldM ?idM ?p ?b ?z ?rc ?collected true))
+        (or (does ?player buyP_Sprievodca) (does ?player buyP_Ochranka) (does ?player buyP_NoveKoleso))
+        (minuss ?oldM 2 ?newM))
 
 (<= (next (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected false))                                   ;ak ukoncil tah
         (true (playerStat ?player ?act ?m ?idM ?p ?b ?z ?rc ?collected true))
@@ -247,7 +272,6 @@
         (succ ?newRC ?oldRC)
         (does ?player (dropRozbitaCesta ?policko)))
 
-
 											
 
 (<= (next (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected true)) 		;ak stupil na policko, na kt. je cudzia bazina
@@ -255,6 +279,7 @@
 	(true (field ?newP ?opponent bazina))
         (distinct ?opponent ?player)
 	(true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false)))
+        
 
 
 
@@ -363,6 +388,73 @@
       (distinct ?player ?opponent)
       (does ?player endTurn)         
       (true (control ?player random)))                                             
+
+
+(<= (next (pozitiveChips ?player ?newS ?o ?nk))              ;ak kupil sprevodcu
+    (true (pozitiveChips ?player ?oldS ?o ?nk))
+    (does ?player buyP_Sprievodca)
+    (succ ?oldS ?newS))
+
+(<= (next (pozitiveChips ?player ?s ?newO ?nk))              ;ak kupil ochranku
+    (true (pozitiveChips ?player ?s ?oldO ?nk))
+    (does ?player buyP_Ochranka)
+    (succ ?oldO ?newO))
+
+(<= (next (pozitiveChips ?player ?s ?o ?newNK))              ;ak kupil noveKoleso
+    (true (pozitiveChips ?player ?s ?o ?oldNK))
+    (does ?player buyP_NoveKoleso)
+    (succ ?oldNK ?newNK))
+
+(<= (next (pozitiveChips ?player ?sM1 ?o ?nk))               ;ak sprievodca splnil svoju funkciu
+    (stepOnBazinaAndHaveSprievodca ?player)
+    (true (pozitiveChips ?player ?actS ?o ?nk))
+    (greaterThen ?actS 0)
+    (succ ?sM1 ?actS))
+
+(<= (next (pozitiveChips ?player ?s ?oM1 ?nk))               ;ak ochranka splnila svoju funkciu
+    (stepOnZbojniciAndHaveOchranka ?player)
+    (true (pozitiveChips ?player ?s ?actO ?nk))
+    (greaterThen ?actO 0)
+    (succ ?oM1 ?actO))
+
+(<= (next (pozitiveChips ?player ?s ?o ?nkM1))               ;ak noveKoleso splnilo svoju funkciu
+    (stepOnRozbitaCestaAndHaveNoveKoleso ?player)
+    (true (pozitiveChips ?player ?s ?o ?actNK))
+    (greaterThen ?actNK 0)
+    (succ ?nkM1 ?actNK))
+
+(<= (next (pozitiveChips ?player ?s ?o ?nk))
+    (true (pozitiveChips ?player ?s ?o ?nk))
+    (not (buyPositiveChip ?player))
+    (not (stepOnBazinaAndHaveSprievodca ?player))                    ;nejak jednoduchsie, pridat predikat dvojiciek cesta-nnoveKoleso ...
+    (not (stepOnZbojniciAndHaveOchranka ?player))
+    (not (stepOnRozbitaCestaAndHaveNoveKoleso ?player)))
+
+(<= (buyPositiveChip ?player)
+    (or (does ?player buyP_Sprievodca) (does ?player buyP_NoveKoleso) (does ?player buyP_Ochranka)))
+
+(<= (stepOnBazinaAndHaveSprievodca ?player)
+    (does ?player (move ?oldP ?newP))
+    (true (field ?newP ?opponent bazina))
+    (distinct ?player ?opponent)
+    (true (pozitiveChips ?player ?s ?o ?nk))
+    (greaterThen ?s 0))
+
+(<= (stepOnZbojniciAndHaveOchranka ?player)
+    (does ?player (move ?oldP ?newP))
+    (true (field ?newP ?opponent zbojnici))
+    (distinct ?player ?opponent)
+    (true (pozitiveChips ?player ?s ?o ?nk))
+    (greaterThen ?o 0))
+
+(<= (stepOnRozbitaCestaAndHaveNoveKoleso ?player)
+    (does ?player (move ?oldP ?newP))
+    (true (field ?newP ?opponent rozbitaCesta))
+    (distinct ?player ?opponent)
+    (true (pozitiveChips ?player ?s ?o ?nk))
+    (greaterThen ?nk 0))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; terminal and goals ;;
