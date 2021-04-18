@@ -272,38 +272,47 @@
         (succ ?newRC ?oldRC)
         (does ?player (dropRozbitaCesta ?policko)))
 
-											
-
-(<= (next (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected true)) 		;ak stupil na policko, na kt. je cudzia bazina
-	(does ?player (move ?actP ?newP))
-	(true (field ?newP ?opponent bazina))
-        (distinct ?opponent ?player)
-	(true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false)))
-        
-
-
 
 (<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc ?collected true)) 		;ak stupil na policko, na kt. je jeho neg. zeton
 	(does ?player (move ?actP ?newP))
 	(true (field ?newP ?player ?chip))
 	(true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false)))
 
+											
+
+(<= (next (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected true)) 		;ak stupil na policko, na kt. je cudzia bazina a nema sprievodcu
+	(does ?player (move ?actP ?newP))
+	(true (field ?newP ?opponent bazina))
+        (distinct ?opponent ?player)
+	(true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false))
+        (true (pozitiveChips ?player 0 ?o ?nk)))
+        
 
 (<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc false true))   
        (does ?player (move ?actP ?newP))
        (true (field ?newP ?opponent zbojnici))
-       (distinct ?opponent ?player)                                                ;ak stupil na policko, na kt. su cudzi zbojnici
-       (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false)))
-
+       (distinct ?opponent ?player)                                                ;ak stupil na policko, na kt. su cudzi zbojnici a nema ochranku
+       (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false))
+       (true (pozitiveChips ?player ?s 0 ?nk)))
 
 
 
 (<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc ?collected true)) 
-        (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false))		;ak stupil na policko, na kt. je cudzia rozbita cesta
+        (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false))		;ak stupil na policko, na kt. je cudzia rozbita cesta a nema noveKoleso
 	(does ?player (move ?actP ?newP))
 	(true (field ?newP ?opponent rozbitaCesta))
-        (distinct ?player ?opponent))
-	
+        (distinct ?player ?opponent)
+        (true (pozitiveChips ?player ?s ?o 0)))
+
+
+(<= (next (playerStat ?player ?newP ?m ?idM ?p ?b ?z ?rc ?collected true))              ;ak stupil na cudzi neg. zeton a mal k nemu pozitivny, tak sa len posunie
+        (true (playerStat ?player ?actP ?m ?idM ?p ?b ?z ?rc ?collected false))
+	(does ?player (move ?actP ?newP))
+        (or (stepOnBazinaAndHaveSprievodca ?player) (stepOnZbojniciAndHaveOchranka ?player) (stepOnRozbitaCestaAndHaveNoveKoleso ?player)))
+
+
+
+
 
 (<= (next (field ?policko ?player bazina))
         (does ?player (dropBazina ?policko))
