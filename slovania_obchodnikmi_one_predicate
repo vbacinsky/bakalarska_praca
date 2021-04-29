@@ -250,10 +250,11 @@
         (next_mission ?actMission ?newMission)
         (mission ?actMission ?from ?newP)
         (mission ?newMission ?newP ?to)
-        (pluss ?actPoints 5 ?newPoints))
+        (pluss ?actPoints 6 ?newPoints))
 
-(<= (next (playerStat ?player ?newP ?m ?actMission ?p ?b ?z ?rc true true))                            ;ak je na policku kde zacina misia tak vyzdivhol tovar
+(<= (next (playerStat ?player ?newP ?m ?actMission ?newP ?b ?z ?rc true true))                            ;ak je na policku kde zacina misia tak vyzdivhol tovar
         (true (playerStat ?player ?act ?m ?actMission ?p ?b ?z ?rc false false))
+		(succ ?p ?newP)
         (does ?player (move ?act ?newP))
         (negativeChip ?chip)
         (role ?opponent)
